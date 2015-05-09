@@ -1,0 +1,41 @@
+import urllib2, urllib
+import cookielib
+
+
+class BaseSpider():
+    def __init__(self):
+        self.user_agent = "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/40.0.2214.115 Safari/537.36"
+        self.headers =  {'User-Agent': self.user_agent}
+        self.cookieJar = cookielib.LWPCookieJar()
+        self.opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(self.cookieJar), urllib2.HTTPHandler)
+        urllib2.install_opener(self.opener)
+
+    def set_user_agent(self, user_agent):
+        self.user_agent = user_agent
+
+    def login(self):
+        pass
+
+
+    def load_page(self, url):
+        req = urllib2.Request(url, headers=self.headers)
+        page = ''
+        try:
+            response = urllib2.urlopen(req)
+            page = response.read()
+        except urllib2.HTTPError, e:
+            print 'Open the request Failed!:', e.code, url
+        except urllib2.URLError, e:
+            print 'Open the url Failed!:', e.reason, url
+        except Exception, e:
+            print 'Open the page Failed!:' + e.message
+        finally:
+            return page
+
+    def urlopen_with_data(self, url,  post_data):
+        req = urllib2.Request(url, post_data, headers=self.headers)
+        try:
+            response = urllib2.urlopen(req)
+            return response
+        except Exception, e:
+            raise Exception('Open the url Failed:' + e.message)
