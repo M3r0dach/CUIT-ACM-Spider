@@ -1,6 +1,5 @@
 from __init__ import *
 from BaseSpider import BaseSpider
-from dao.dbHDU import HduSubmit
 from util.ThreadingPool import ThreadPool
 
 
@@ -86,15 +85,6 @@ class HDUSpider(BaseSpider):
             return ret
         except Exception, e:
             raise Exception('Get Status Error:' + e.message)
-
-    def submit_status(self, status, account):
-        try:
-            submit = HduSubmit(status['pro_id'],
-                               account
-            )
-            submit.save()
-        except Exception, e:
-            raise Exception("Submit to DB Error!!!" + e.message)
 
     def get_status_list(self, account):
         solved_list = self.get_solved_list()

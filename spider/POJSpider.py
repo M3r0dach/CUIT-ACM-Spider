@@ -1,6 +1,5 @@
 from __init__ import *
 from BaseSpider import BaseSpider
-from dao.dbPOJ import PojSubmit
 from util.ThreadingPool import ThreadPool
 
 class POJSpider(BaseSpider):
@@ -92,14 +91,6 @@ class POJSpider(BaseSpider):
                 time.sleep(10)
             try_time -= 1
         return None
-
-    def submit_status(self, status, account):
-        try:
-            submit = PojSubmit(status['pro_id'],
-                               account)
-            submit.save()
-        except Exception, e:
-            raise Exception("Submit to DB Error!!!" + e.message)
 
     def get_status_list(self, account):
         solved_list = self.get_solved_list()

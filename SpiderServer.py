@@ -15,7 +15,6 @@ from spider.ZOJSpider import ZOJSpider
 from spider.UVASpider import UVASpider
 from spider.BNUSpider import BNUSpider
 from spider.BCSpider import BCSpider
-
 from flask.ext.sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
@@ -67,31 +66,28 @@ class AccountUpdateServer():
                                         if not self.submit_table.query.filter(self.submit_table.pro_id == problem, self.submit_table.account == account).first():
                                             nwork = self.submit_table(problem, account)
                                             nwork.save()
-                                    account.update_status = 0
-                                    account.save()
                                 elif hasattr(spider_instance,'get_status_list') :
                                     status_list = spider_instance.get_status_list()
                                     for status in status_list:
-                                        if not self.submit_table.query.filter(self.submit_table.pro_id == status['pro_id'], self.submit_table.account == account).first():
+                                        if spider_instance.is_gym(status['contest_id']):
+                                            continue
+                                        if not self.submit_table.query.filter(self.submit_table.pro_id == status['pro_id'], self.submit_table.account == account).count():
                                             nwork = self.submit_table(status['pro_id'], account)
                                             try:
-                                                code = spider_instance.get_solved_code(status['contest_id'], status['run_id'])
                                                 nwork.update_info(
                                                     status['run_id'],
                                                     status['submit_time'],
                                                     status['run_time'],
                                                     status['memory'],
                                                     status['lang'],
-                                                    code
+                                                    status['code']
                                                 )
-                                                nwork.update_status = 0
-                                                nwork.save()
                                             except Exception, e:
                                                 db.session.remove(nwork)
                                                 db.session.commit()
                                                 raise Exception('['+self.oj_name+'] update submits error! :' + e.message)
-                                    account.update_status = 0
-                                    account.save()
+                                account.update_status = 0
+                                account.save()
                         else :
                             raise Exception('account login error!')
                     except Exception, e:

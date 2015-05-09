@@ -1,6 +1,5 @@
 from __init__ import *
 from BaseSpider import BaseSpider
-from dao.dbBNU import BnuSubmit
 from util.ThreadingPool import ThreadPool
 import json
 
@@ -142,13 +141,6 @@ class BNUSpider(BaseSpider):
             if status:
                 self.submit_status(status, account)
 
-    def submit_status(self, status, account):
-        try:
-            submit = BnuSubmit(status['pro_id'],
-                               account)
-            submit.save()
-        except Exception, e:
-            raise Exception("Submit to DB Error!!!" + e.message)
 
     def get_solved_code(self, run_id):
         url = 'http://acm.bnu.edu.cn/v3/ajax/get_source.php?runid='+run_id

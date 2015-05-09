@@ -24,11 +24,11 @@ class BaseSpider():
             response = urllib2.urlopen(req)
             page = response.read()
         except urllib2.HTTPError, e:
-            print 'Open the request Failed!:', e.code, url
+            raise Exception('Open the request Failed!:', e.code, url)
         except urllib2.URLError, e:
-            print 'Open the url Failed!:', e.reason, url
+            raise Exception('Open the url Failed!:', e.reason, url)
         except Exception, e:
-            print 'Open the page Failed!:' + e.message
+            raise Exception('Open the page Failed!:' + e.message)
         finally:
             return page
 

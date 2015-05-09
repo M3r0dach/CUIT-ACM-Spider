@@ -1,6 +1,5 @@
 from __init__ import *
 from BaseSpider import BaseSpider
-from dao.dbZOJ import ZojSubmit
 from util.ThreadingPool import ThreadPool
 
 class ZOJSpider(BaseSpider):
@@ -83,15 +82,6 @@ class ZOJSpider(BaseSpider):
         except Exception , e:
             print 'error:' + e.message
             return None
-
-    def submit_status(self, status, account):
-        try:
-            submit = ZojSubmit(status['pro_id'],
-                               account
-                               )
-            submit.save()
-        except Exception, e:
-            raise Exception("Submit to DB Error!!!" + e.message)
 
     def get_status_list(self, account):
         solved_list = self.get_solved_list()

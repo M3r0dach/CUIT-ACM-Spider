@@ -1,6 +1,5 @@
 from __init__ import *
 from BaseSpider import BaseSpider
-from dao.dbCF import CfSubmit
 import json, time
 
 class CFSpider(BaseSpider):
@@ -46,19 +45,11 @@ class CFSpider(BaseSpider):
         except Exception, e:
             raise Exception('GET STATUES ERROR:' + e.message)
 
-    def submit_status(self, status, account):
-        try:
-            submit = CfSubmit(status['contest_id'],
-                              status['pro_index'],
-                              status['run_id'],
-                              status['submit_time'],
-                              status['run_time'],
-                              status['memory'],
-                              status['lang'],
-                              account)
-            submit.save()
-        except Exception, e:
-            raise Exception("Submit to DB Error!!!: " + e.message)
+    def is_gym(self,contest_id):
+        if len(str(contest_id)) > 3:
+            return True
+        return False
+
 
     def get_status_list(self, verdict='OK'):
         submits = self.get_status()
@@ -77,6 +68,7 @@ class CFSpider(BaseSpider):
                        'lang': submit['programmingLanguage']
                 }
                 cur['pro_id'] = str(cur['contest_id']) + str(cur['pro_index'])
+                cur['code'] = 'http://codeforces.com/contest/'+str(cur['contest_id'])+'/submission/'+str(cur['run_id'])
                 list.append(cur)
             return list
         except Exception, e:
@@ -90,14 +82,6 @@ class CFSpider(BaseSpider):
             return soup.find('pre').text
         except:
             return ''
-
-    def save(self, account):
-        rating = self.get_problem_count()
-        account.set_problem_count(rating['rating'], rating['max_rating'])
-        account.save()
-        status_list = self.get_status_list()
-        for status in status_list:
-            self.submit_status(status, account)
 
 
 
