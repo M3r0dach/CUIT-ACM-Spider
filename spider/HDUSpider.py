@@ -101,5 +101,18 @@ class HDUSpider(BaseSpider):
             soup = BeautifulSoup(page)
             return soup.find('textarea').text
         except Exception ,e :
-            return u''
+            raise Exception("crawl code error " + e.message)
 
+    def update_account(self, account):
+        self.login()
+        if not self.login_status:
+            return False
+        count = self.get_problem_count()
+        account.set_problem_count(count['solved'], count['submitted'])
+        account.last_update_time = datetime.datetime.now()
+        account.save()
+        solved_list = self.get_solved_list()
+        for problem in solved_list:
+            if not Submit.query.filter(Submit.pro_id == problem, Submit.account == account).first():
+                nwork = Submit(problem, account)
+                nwork.save()

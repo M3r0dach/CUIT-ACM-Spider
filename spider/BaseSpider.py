@@ -13,6 +13,9 @@ class BaseSpider():
     def set_user_agent(self, user_agent):
         self.user_agent = user_agent
 
+    def set_account(self, account):
+        self.account = account
+
     def login(self):
         pass
 

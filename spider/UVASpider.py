@@ -3,12 +3,9 @@ from BaseSpider import BaseSpider
 
 class UVASpider(BaseSpider):
 
-    def __init__(self, username='', user_id=''):
+    def __init__(self):
         BaseSpider.__init__(self)
         self.login_url = 'http://uva.onlinejudge.org/index.php?option=com_comprofiler&task=login'
-        self.username = username
-        self.user_id = user_id
-        self.login_status = True
 
     #def get_login_hidden_params(self):
     #    index_page = self.load_page('http://uva.onlinejudge.org/')
@@ -43,7 +40,7 @@ class UVASpider(BaseSpider):
     #        return False
 
     def get_problem_count(self):
-        url = 'http://uva.onlinejudge.org/index.php?option=com_onlinejudge&Itemid=20&page=show_authorstats&userid='+self.user_id
+        url = 'http://uva.onlinejudge.org/index.php?option=com_onlinejudge&Itemid=20&page=show_authorstats&userid='+self.account.password
         try:
             page = self.load_page(url)
             soup = BeautifulSoup(page)
@@ -54,18 +51,10 @@ class UVASpider(BaseSpider):
         except Exception, e:
             raise Exception('Get Problem Count Error:' + e.message)
 
-    def save(self, account):
+    def update_account(self):
+        if not self.account:
+            return
         count = self.get_problem_count()
-        account.set_problem_count(count['solved'], count['submitted'])
-        account.save()
-
-
-
-def test():
-    spider = UVASpider(user_id='324331')
-    print spider.get_problem_count()
-
-if __name__ == '__main__':
-    start = time.time()
-    test()
-    print time.time() - start
+        self.account.set_problem_count(count['solved'], count['submitted'])
+        self.account.last_update_time = datetime.datetime.now()
+        self.account.save()

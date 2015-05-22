@@ -4,16 +4,12 @@ import json, time
 
 class CFSpider(BaseSpider):
 
-    def __init__(self, handle='', password=''):
+    def __init__(self):
         BaseSpider.__init__(self)
-        self.handle = handle
         self.login_status = True
 
-    def set_handle(self, handle):
-        self.handle = handle
-
     def get_user_info(self):
-        url = 'http://codeforces.com/api/user.info?handles='+self.handle
+        url = 'http://codeforces.com/api/user.info?handles='+self.account.nickname
         page = self.load_page(url)
         try:
             info = json.JSONDecoder().decode(page)
@@ -33,7 +29,7 @@ class CFSpider(BaseSpider):
         return ret
 
     def get_status(self):
-        url = 'http://codeforces.com/api/user.status?handle='+self.handle
+        url = 'http://codeforces.com/api/user.status?handle='+self.account.nickname
         page = self.load_page(url)
         try:
             info = json.JSONDecoder().decode(page)
@@ -56,8 +52,6 @@ class CFSpider(BaseSpider):
         list = []
         try:
             for submit in submits:
-                if submit['verdict'] != verdict:
-                    continue
                 submit_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(submit['creationTimeSeconds']))
                 cur = {'contest_id': submit['contestId'],
                        'pro_index': submit['problem']['index'],
@@ -80,8 +74,16 @@ class CFSpider(BaseSpider):
         try:
             soup = BeautifulSoup(page)
             return soup.find('pre').text
-        except:
-            return ''
+        except Exception, e:
+            raise Exception("crawl code error " + e.message)
 
+
+    def update_account(self):
+        if not self.account:
+            return
+        count = self.get_problem_count()
+        self.account.set_problem_count(count['solved'], count['submitted'])
+        self.account.last_update_time = datetime.datetime.now()
+        self.account.save()
 
 

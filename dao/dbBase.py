@@ -11,21 +11,24 @@ db = SQLAlchemy()
 # Table of Team Member
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(25), index=True, nullable=False)
-    password = db.Column(db.String(25))
+    username = db.Column(db.String(25), unique=True, index=True, nullable=False)
+    name = db.Column(db.String(25))
     password_hash = db.Column(db.String(128))
     stu_id = db.Column(db.String(20))
     gender = db.Column(db.Boolean)
     email = db.Column(db.String(65))
     create_time = db.Column(db.DateTime)
+    is_admin = db.Column(db.Integer)
 
-    def __init__(self, name, password, stu_id, gender, email):
+    def __init__(self, username,name, password, stu_id, gender, email):
+        self.username = username
         self.name = name
         self.password = password
         self.stu_id = stu_id
         self.gender = gender
         self.email = email
         self.create_time = datetime.datetime.now()
+        self.is_admin = 0
 
     def __repr__(self):
         return '<User %s>' % self.name

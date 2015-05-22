@@ -19,6 +19,8 @@ OJ_MAP = {
     'bnu': 'BNU'
 }
 
+SERVER_TIME_DELTTA = 6
+
 CSRF_ENABLED = True
 SECRET_KEY = 'a very hard string'
 

@@ -92,27 +92,6 @@ class POJSpider(BaseSpider):
             try_time -= 1
         return None
 
-    def get_status_list(self, account):
-        solved_list = self.get_solved_list()
-        for problem in solved_list:
-            status = self.get_status(problem)
-            if status:
-                self.submit_status(status, account)
-
-    def get_status_list_threading(self, account):
-        solved_list = self.get_solved_list()
-        pool = ThreadPool()
-        pool.start_threads()
-        for problem in solved_list:
-            pool.add_job(self.get_status, problem)
-        pool.wait_for_complete()
-        while pool.has_next_result():
-            status = pool.get_result()
-            if status:
-                self.submit_status(status, account)
-        pool.stop_threads()
-
-
     def get_solved_code(self, run_id):
         url = 'http://poj.org/showsource?solution_id='+run_id
         try :
@@ -120,5 +99,19 @@ class POJSpider(BaseSpider):
             soup = BeautifulSoup(page)
             return soup.find('pre').text
         except Exception, e:
-            print e.message + page
-            return ''
+            raise Exception("crawl code error " + e.message)
+
+    def update_account(self, account):
+        self.login()
+        if not self.login_status:
+            return False
+        count = self.get_problem_count()
+        account.set_problem_count(count['solved'], count['submitted'])
+        account.last_update_time = datetime.datetime.now()
+        account.save()
+        solved_list = self.get_solved_list()
+        for problem in solved_list:
+            if not Submit.query.filter(Submit.pro_id == problem, Submit.account == account).first():
+                nwork = Submit(problem, account)
+                nwork.save()
+

@@ -9,26 +9,32 @@ class Submit(db.Model):
     run_time = db.Column(db.Integer)
     memory = db.Column(db.Integer)
     lang = db.Column(db.String(20))
+    result = db.Column(db.String(100))
     code = db.Column(db.Text)
     update_status = db.Column(db.Integer)
     oj_name = db.Column(db.String(20), nullable=False)
+    user_name = db.Column(db.String(25),nullable=True)
     # connect to Account
     account_id = db.Column(db.Integer,db.ForeignKey('account.id'))
     account = db.relationship('Account', backref=db.backref('submit', lazy='dynamic'))
+
+
 
     def __init__(self, pro_id, account):
         self.pro_id = pro_id
         self.account = account
         self.oj_name = account.oj_name
-        self.update_status = 1
+        self.user_name = account.user.name
+        self.update_status = 0
 
-    def update_info(self,run_id,submit_time, run_time, memory,lang,code):
+    def update_info(self,run_id,submit_time, run_time, memory,lang,code,result):
         self.code = code
         self.run_id = run_id
         self.submit_time = submit_time
         self.run_time = run_time
         self.memory = memory
         self.lang = lang
+        self.result = result
         self.save()
 
     def __repr__(self):
@@ -38,4 +44,3 @@ class Submit(db.Model):
 
     def save(self):
         db.session.add(self)
-        db.session.commit()

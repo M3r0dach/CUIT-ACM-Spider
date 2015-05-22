@@ -5,15 +5,13 @@ import json
 
 class BNUSpider(BaseSpider):
 
-    def __init__(self,username='', password=''):
+    def __init__(self):
         BaseSpider.__init__(self)
         self.login_url = 'http://acm.bnu.edu.cn/v3/ajax/login.php'
-        self.username = username
-        self.password = password
         self.login_status = False
 
     def login(self):
-        data = {'username': self.username,'password':self.password, 'cksave':'1'}
+        data = {'username': self.account.nickname,'password':self.account.password, 'cksave':'1'}
         try:
             response = self.urlopen_with_data(self.login_url, urllib.urlencode(data))
             status = response.getcode()
@@ -26,10 +24,8 @@ class BNUSpider(BaseSpider):
         except Exception, e:
             return False
 
-
-
     def get_problem_count(self):
-        url = 'http://acm.bnu.edu.cn/v3/userinfo.php?name=' + self.username
+        url = 'http://acm.bnu.edu.cn/v3/userinfo.php?name=' + self.account.nickname
         try :
             page = self.load_page(url)
             soup = BeautifulSoup(page)
@@ -40,7 +36,7 @@ class BNUSpider(BaseSpider):
             return {'solved': 0, 'submitted': 0}
 
     def get_solved_list(self):
-        url = 'http://acm.bnu.edu.cn/v3/userinfo.php?name=' + self.username
+        url = 'http://acm.bnu.edu.cn/v3/userinfo.php?name=' + self.account.nickname
         try :
             page = self.load_page(url)
             soup = BeautifulSoup(page)
@@ -52,14 +48,13 @@ class BNUSpider(BaseSpider):
         except Exception, e:
             raise Exception('Get Solved List ERROR:' + e.message)
 
-    def get_status(self, pro_id):
-        url = 'http://acm.bnu.edu.cn/v3/ajax/status_data.php?'
+    def request_data(self):
         data = {
             'sEcho' : '4',
             'iColumns' : '10',
             'sColumns' : '',
             'iDisplayStart' : '0',
-            'iDisplayLength' : '1',
+            'iDisplayLength' : '30',
             'mDataProp_0' : '0',
             'mDataProp_1' : '1',
             'mDataProp_2' : '2',
@@ -72,16 +67,16 @@ class BNUSpider(BaseSpider):
             'mDataProp_9' : '9',
             'sSearch' : '',
             'bRegex' : 'false',
-            'sSearch_0' : self.username,
+            'sSearch_0' : self.account.nickname,
             'bRegex_0' : 'false',
             'bSearchable_0' : 'true',
             'sSearch_1' : '',
             'bRegex_1' : 'false',
             'bSearchable_1' : 'true',
-            'sSearch_2' : pro_id,
+            'sSearch_2' : '',
             'bRegex_2' : 'false',
             'bSearchable_2' : 'true',
-            'sSearch_3' : 'Accepted',
+            'sSearch_3' : '',
             'bRegex_3' : 'false',
             'bSearchable_3' : 'true',
             'sSearch_4' : '',
@@ -116,30 +111,47 @@ class BNUSpider(BaseSpider):
             'bSortable_8':'false',
             'bSortable_9':'false',
         }
-        url = url + urllib.urlencode(data)
-        try:
-            page = self.load_page(url)
-            info = json.JSONDecoder().decode(page)
-            status = info['aaData'][0]
-            ret = {'pro_id': pro_id,
-                   'run_id': status[1],
-                   'submit_time': status[8],
-                   'run_time': status[5][:-3],
-                   'memory': status[6][:-3],
-                   'lang': status[4]}
-            ret['code'] = self.get_solved_code(ret['run_id'])
-            if ret['memory'] == '':
-                ret['memory'] = '-1'
-            return ret
-        except Exception, e:
-            raise Exception('Get Status Error:' + e.message)
+        return data
 
-    def get_status_list(self, account):
-        solved_list = self.get_solved_list()
-        for problem in solved_list:
-            status = self.get_status(problem)
-            if status:
-                self.submit_status(status, account)
+    def update_submit(self,init=True,length=30):
+        baseurl = 'http://acm.bnu.edu.cn/v3/ajax/status_data.php?'
+        data = self.request_data()
+        data['iDisplayLength'] = str(length)
+        while True:
+            url = baseurl + urllib.urlencode(data)
+            try:
+                page = self.load_page(url)
+                info = json.JSONDecoder().decode(page)
+                if info['aaData'].__len__() == 0:
+                    return
+                for status in info['aaData']:
+                    ret = {'pro_id': status[2],
+                           'run_id': status[1],
+                           'submit_time': status[8],
+                           'run_time': status[5][:-3],
+                           'memory': status[6][:-3],
+                           'lang': status[4],
+                           'result': status[3]
+                    }
+                    if ret['run_time'] == '':
+                        ret['run_time'] = '-1'
+                    if ret['memory'] == '':
+                        ret['memory'] = '-1'
+                    nsub = Submit.query.filter(Submit.run_id == ret['run_id']).first()
+                    if nsub and not init:
+                        return
+                    if not nsub:
+                        ret['code']=self.get_solved_code(ret['run_id'])
+                        nsub = Submit(ret['pro_id'], self.account)
+                        nsub.update_info(ret['run_id'],ret['submit_time'],ret['run_time'],ret['memory'],ret['lang'],ret['code'],ret['result'])
+            except Exception, e:
+                db.session.rollback()
+                raise Exception('update Status Error:' + e.message)
+            data['iDisplayStart'] = str(int(data['iDisplayStart']) + length)
+            if init : db.session.commit()
+            time.sleep(1)
+        self.account.last_update_time = datetime.datetime.now()
+        db.session.commit()
 
 
     def get_solved_code(self, run_id):
@@ -149,23 +161,15 @@ class BNUSpider(BaseSpider):
             info = json.JSONDecoder().decode(page)
             return BeautifulSoup(info['source']).text
         except Exception, e:
-            return ''
+            raise Exception("crawl code error " + e.message)
 
-    def save(self, account):
+    def update_account(self):
+        if not self.account:
+            return
         self.login()
+        if not self.login_status:
+            return
         count = self.get_problem_count()
-        account.set_problem_count(count['solved'], count['submitted'])
-        account.save()
-        self.get_status_list(account)
-
-def test():
-    spider = BNUSpider('dreameracm','3235083')
-    spider.login()
-    spider.get_problem_count()
-    spider.get_solved_list()
-    print spider.get_status('1000')
-
-if __name__ == '__main__':
-    start = time.time()
-    test()
-    print time.time() - start
+        self.account.set_problem_count(count['solved'], count['submitted'])
+        self.account.last_update_time = datetime.datetime.now()
+        self.account.save()

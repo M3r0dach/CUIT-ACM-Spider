@@ -55,8 +55,8 @@ class ZOJSpider(BaseSpider):
             for problem in pro_set:
                 ret.append(problem.text)
             return ret
-        except:
-            return []
+        except Exception, e:
+            raise Exception('Get Solved List ERROR:' + e.message)
 
     def get_status(self, pro_id):
         url = 'http://acm.zju.edu.cn/onlinejudge/showRuns.do?contestId=1&search=true&firstId=-1&lastId=-1&problemCode=%s&handle=%s&idStart=&idEnd=&judgeReplyIds=5' % (pro_id ,self.username)
@@ -80,28 +80,7 @@ class ZOJSpider(BaseSpider):
             ret['code'] = self.get_solved_code(code_url)
             return ret
         except Exception , e:
-            print 'error:' + e.message
-            return None
-
-    def get_status_list(self, account):
-        solved_list = self.get_solved_list()
-        for problem in solved_list:
-            status = self.get_status(problem)
-            if status:
-                self.submit_status(status, account)
-
-    def get_status_list_threading(self, account):
-        solved_list = self.get_solved_list()
-        pool = ThreadPool()
-        pool.start_threads()
-        for problem in solved_list:
-            pool.add_job(self.get_status, problem)
-        pool.wait_for_complete()
-        while pool.has_next_result():
-            status = pool.get_result()
-            if status:
-                self.submit_status(status, account)
-        pool.stop_threads()
+            raise Exception('Get Status Error:' + e.message)
 
     def get_solved_code(self, code_url):
         url = 'http://acm.zju.edu.cn'+code_url
@@ -109,4 +88,19 @@ class ZOJSpider(BaseSpider):
             page = self.load_page(url)
             return page
         except Exception, e:
-            return ''
+            raise Exception("crawl code error " + e.message)
+
+    def update_account(self, account):
+        self.login()
+        if not self.login_status:
+            return False
+        count = self.get_problem_count()
+        account.set_problem_count(count['solved'], count['submitted'])
+        account.last_update_time = datetime.datetime.now()
+        account.save()
+        solved_list = self.get_solved_list()
+        for problem in solved_list:
+            if not Submit.query.filter(Submit.pro_id == problem, Submit.account == account).first():
+                nwork = Submit(problem, account)
+                nwork.save()
+
