@@ -15,14 +15,13 @@ class Submit(db.Model):
     oj_name = db.Column(db.String(20), nullable=False)
     user_name = db.Column(db.String(25),nullable=True)
     # connect to Account
-    account_id = db.Column(db.Integer,db.ForeignKey('account.id'))
-    account = db.relationship('Account', backref=db.backref('submit', lazy='dynamic'))
 
-
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    user = db.relationship('User', backref=db.backref('submit', lazy='dynamic'))
 
     def __init__(self, pro_id, account):
         self.pro_id = pro_id
-        self.account = account
+        self.user = account.user
         self.oj_name = account.oj_name
         self.user_name = account.user.name
         self.update_status = 0
@@ -41,6 +40,6 @@ class Submit(db.Model):
         return '<BNU Submit> \t"%s" \t%s \t%sMS \t%sKB \t%s \t%s' \
                % (self.account_name, self.pro_id, self.run_time, self.memory, self.lang, self.submit_time)
 
-
     def save(self):
         db.session.add(self)
+        db.session.commit()

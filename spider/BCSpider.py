@@ -18,7 +18,7 @@ class BCSpider(BaseSpider):
         except Exception, e:
             raise Exception('Get Problem Count Error:' + e.message)
 
-    def update_account(self):
+    def update_account(self, init):
         if not self.account:
             return
         count = self.get_problem_count()

@@ -1,18 +1,14 @@
 from __init__ import *
 from dbBase import db
+from util import security
 import datetime
 # Table of Account
 class Account(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    nickname = db.Column(db.String(20), unique=True, nullable=False)
-    password = db.Column(db.String(20), nullable=False)
+    nickname = db.Column(db.String(20), nullable=False)
+    password_hash = db.Column(db.String(128))
     solved_or_rating = db.Column(db.Integer, nullable=False, default=0)
     submitted_or_max_rating = db.Column(db.Integer, nullable=False, default=0)
-    # update_status
-    # 0 for update finished
-    # 1 for not init
-    # 2 for wait for update
-    # 3 for update error
     update_status = db.Column(db.Integer, default=1, index=True)
     oj_name = db.Column(db.String(20), nullable=False)
     last_update_time = db.Column(db.DateTime)
@@ -24,8 +20,16 @@ class Account(db.Model):
         self.oj_name = oj_name
         self.nickname = nickname
         self.password = password_or_oj_id
-        self.last_update_time = datetime.datetime.now()
         self.user = user
+        self.last_update_time = datetime.datetime.min
+
+    @property
+    def password(self):
+        return security.decrypt(self.password_hash).decode('utf-8')
+
+    @password.setter
+    def password(self, value):
+        self.password_hash = security.encrypt(value.encode('utf-8'))
 
     def __repr__(self):
         #return '<Account %s>' % self.nickname

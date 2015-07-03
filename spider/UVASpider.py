@@ -45,13 +45,13 @@ class UVASpider(BaseSpider):
             page = self.load_page(url)
             soup = BeautifulSoup(page)
             info_element = soup.find(text='SUBMISSIONS').parent.parent.previous_sibling.previous_sibling
-            submitted =  info_element.contents[1].text
+            submitted = info_element.contents[1].text
             solved = info_element.contents[3].text
             return {'solved': solved, 'submitted': submitted}
         except Exception, e:
             raise Exception('Get Problem Count Error:' + e.message)
 
-    def update_account(self):
+    def update_account(self, init):
         if not self.account:
             return
         count = self.get_problem_count()

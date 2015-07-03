@@ -17,6 +17,11 @@ class User(UserMixin, db.Model):
     stu_id = db.Column(db.String(20))
     gender = db.Column(db.Boolean)
     email = db.Column(db.String(65))
+    score = db.Column(db.Integer, default=0)
+    current_week_submit = db.Column(db.Integer, default=0)
+    current_week_solved = db.Column(db.Integer, default=0)
+    last_week_submit = db.Column(db.Integer, default=0)
+    last_week_solved = db.Column(db.Integer, default=0)
     create_time = db.Column(db.DateTime)
     is_admin = db.Column(db.Integer)
 
@@ -36,6 +41,20 @@ class User(UserMixin, db.Model):
     @property
     def password(self):
         raise AttributeError('password is not a readable attribute')
+
+    def update_score(self):
+        score = 0
+        if self.account:
+            accounts = self.account.all()
+            for account in accounts:
+                if account.oj_name in ['cf', 'bc']:
+                    tmp = account.get_problem_count()
+                    score += tmp['rating']*0.6 + tmp['max_rating']*0.2
+                else:
+                    tmp = account.get_problem_count()
+                    score += tmp['solved']*0.4
+        self.score = score
+
 
     @password.setter
     def password(self, password):

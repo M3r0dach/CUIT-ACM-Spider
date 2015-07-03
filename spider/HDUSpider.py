@@ -1,19 +1,18 @@
 from __init__ import *
 from BaseSpider import BaseSpider
+from dao.dbACCOUNT import Account
 from util.ThreadingPool import ThreadPool
 
 
 class HDUSpider(BaseSpider):
 
-    def __init__(self, username='', password=''):
+    def __init__(self):
         BaseSpider.__init__(self)
         self.login_url = 'http://acm.hdu.edu.cn/userloginex.php?action=login'
-        self.username = username
-        self.password = password
         self.login_status = False
 
     def login(self):
-        data = {'username': self.username, 'userpass': self.password, 'login': 'Sign In'}
+        data = {'username': self.account.nickname, 'userpass': self.account.password, 'login': 'Sign In'}
         try:
             response = self.urlopen_with_data(self.login_url, urllib.urlencode(data))
             status = response.getcode()
@@ -31,7 +30,7 @@ class HDUSpider(BaseSpider):
         return string[start:end]
 
     def get_problem_count(self):
-        url = 'http://acm.hdu.edu.cn/userstatus.php?user='+self.username
+        url = 'http://acm.hdu.edu.cn/userstatus.php?user='+self.account.nickname
         try:
             page = self.load_page(url)
             soup = BeautifulSoup(page)
@@ -42,7 +41,7 @@ class HDUSpider(BaseSpider):
             raise Exception('Get Problem Count Error:' + e.message)
 
     def get_solved_list(self):
-        url = 'http://acm.hdu.edu.cn/userstatus.php?user='+self.username
+        url = 'http://acm.hdu.edu.cn/userstatus.php?user='+self.account.nickname
         try:
             page = self.load_page(url)
             soup = BeautifulSoup(page)
@@ -60,59 +59,73 @@ class HDUSpider(BaseSpider):
                 return ret
             else:
                 return []
-        except Exception , e:
+        except Exception, e:
             raise Exception('Get Solved List ERROR:' + e.message)
 
-    def get_status(self, pro_id):
-        url = 'http://acm.hdu.edu.cn/status.php?user='+self.username+'&pid='+pro_id+'&status=5'
+    def get_status(self, start):
+        url = 'http://acm.hdu.edu.cn/status.php?user={0}&first={1}'.format(self.account.nickname, start)
+        slist = []
         try:
             page = self.load_page(url)
-            soup = BeautifulSoup(page)
-            tds = soup.select('tr[align="center"]')[2].select('td')
-            status = []
-            index = 0
-            for value in tds:
-                if index in [0, 1, 4, 5, 7]:
-                    status.append(value.contents[0])
-                index += 1
-            ret = {'pro_id': pro_id,
-                   'run_id': status[0],
-                   'submit_time': status[1],
-                   'run_time': status[2][:-2],
-                   'memory': status[3][:-1],
-                   'lang': status[4]}
-            ret['code'] = self.get_solved_code(ret['run_id'])
-            return ret
+            soup = BeautifulSoup(page, 'html5lib')
+            tds = soup.select('.table_text > tbody > tr[align=center]')#[2].select('td')
+            for td in tds:
+                status = []
+                index = 0
+                for value in td:
+                    if index in [0, 1, 2, 3, 4, 5, 7]:
+                        status.append(value.text)
+                    index += 1
+                ret = {'pro_id': status[3], 'run_id': status[0], 'submit_time': status[1], 'run_time': status[4][:-2],
+                       'memory': status[5][:-1], 'lang': status[6], 'result': status[2]}
+                ret['code'] = self.get_solved_code(ret['run_id'])
+                slist.append(ret)
+            return slist
         except Exception, e:
             raise Exception('Get Status Error:' + e.message)
-
-    def get_status_list(self, account):
-        solved_list = self.get_solved_list()
-        for problem in solved_list:
-            status = self.get_status(problem)
-            if status:
-                self.submit_status(status, account)
 
 
     def get_solved_code(self, run_id):
         url = 'http://acm.hdu.edu.cn/viewcode.php?rid='+run_id
-        try :
+        try:
             page = self.load_page(url)
             soup = BeautifulSoup(page)
             return soup.find('textarea').text
-        except Exception ,e :
-            raise Exception("crawl code error " + e.message)
+        except Exception, e:
+            raise Exception("crawl code error "+run_id + e.message)
 
-    def update_account(self, account):
+    def update_submit(self, init):
+        start = ''
+        while True:
+            slist = self.get_status(start)
+            if not slist:
+                return
+            try:
+                for status in slist:
+                    nsub = Submit.query.filter(Submit.run_id == status['run_id'], Submit.oj_name == self.account.oj_name).first()
+                    if nsub and not init:
+                        return
+                    if not nsub:
+                        nsub = Submit(status['pro_id'], self.account)
+                        nsub.update_info(status['run_id'],status['submit_time'],status['run_time'],status['memory'],status['lang'],status['code'],status['result'])
+            except Exception, e:
+                db.session.rollback()
+                raise Exception('update Status Error:' + e.message)
+            if init:
+                db.session.commit()
+            time.sleep(2)
+            start = str(int(slist[-1]['run_id'])-1)
+        self.account.last_update_time = datetime.datetime.now()
+        db.session.commit()
+
+    def update_account(self, init):
+        if not self.account:
+            return
         self.login()
         if not self.login_status:
             return False
         count = self.get_problem_count()
-        account.set_problem_count(count['solved'], count['submitted'])
-        account.last_update_time = datetime.datetime.now()
-        account.save()
-        solved_list = self.get_solved_list()
-        for problem in solved_list:
-            if not Submit.query.filter(Submit.pro_id == problem, Submit.account == account).first():
-                nwork = Submit(problem, account)
-                nwork.save()
+        self.account.set_problem_count(count['solved'], count['submitted'])
+        self.account.last_update_time = datetime.datetime.now()
+        self.account.save()
+        self.update_submit(init)

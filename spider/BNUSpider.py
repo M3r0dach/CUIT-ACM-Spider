@@ -137,33 +137,32 @@ class BNUSpider(BaseSpider):
                         ret['run_time'] = '-1'
                     if ret['memory'] == '':
                         ret['memory'] = '-1'
-                    nsub = Submit.query.filter(Submit.run_id == ret['run_id']).first()
+                    nsub = Submit.query.filter(Submit.run_id == ret['run_id'], Submit.oj_name == self.account.oj_name).first()
                     if nsub and not init:
                         return
                     if not nsub:
-                        ret['code']=self.get_solved_code(ret['run_id'])
+                        ret['code'] = self.get_solved_code(ret['run_id'])
                         nsub = Submit(ret['pro_id'], self.account)
                         nsub.update_info(ret['run_id'],ret['submit_time'],ret['run_time'],ret['memory'],ret['lang'],ret['code'],ret['result'])
             except Exception, e:
                 db.session.rollback()
                 raise Exception('update Status Error:' + e.message)
             data['iDisplayStart'] = str(int(data['iDisplayStart']) + length)
-            if init : db.session.commit()
+            if init:db.session.commit()
             time.sleep(1)
         self.account.last_update_time = datetime.datetime.now()
         db.session.commit()
 
-
     def get_solved_code(self, run_id):
         url = 'http://acm.bnu.edu.cn/v3/ajax/get_source.php?runid='+run_id
-        try :
+        try:
             page = self.load_page(url)
             info = json.JSONDecoder().decode(page)
             return BeautifulSoup(info['source']).text
         except Exception, e:
-            raise Exception("crawl code error " + e.message)
+            raise Exception("BNU crawl code error " + e.message)
 
-    def update_account(self):
+    def update_account(self, init):
         if not self.account:
             return
         self.login()
@@ -173,3 +172,4 @@ class BNUSpider(BaseSpider):
         self.account.set_problem_count(count['solved'], count['submitted'])
         self.account.last_update_time = datetime.datetime.now()
         self.account.save()
+        self.update_submit(init)

@@ -4,15 +4,13 @@ from util.ThreadingPool import ThreadPool
 
 class POJSpider(BaseSpider):
 
-    def __init__(self, username='', password=''):
+    def __init__(self):
         BaseSpider.__init__(self)
         self.login_url = 'http://poj.org/login'
-        self.username = username
-        self.password = password
         self.login_status = False
 
     def login(self):
-        data = {'user_id1': self.username, 'password1': self.password, 'B1': 'login', 'url': '/'}
+        data = {'user_id1': self.account.nickname, 'password1': self.account.password, 'B1': 'login', 'url': '/'}
         try:
             response = self.urlopen_with_data(self.login_url, urllib.urlencode(data))
             status = response.getcode()
@@ -29,7 +27,7 @@ class POJSpider(BaseSpider):
         return string[start:]
 
     def get_problem_count(self):
-        url = 'http://poj.org/userstatus?user_id='+self.username
+        url = 'http://poj.org/userstatus?user_id='+self.account.nickname
         try:
             page = self.load_page(url)
             soup = BeautifulSoup(page)
@@ -40,7 +38,7 @@ class POJSpider(BaseSpider):
             raise Exception('Get Problem Count Error:' + e.message)
 
     def get_solved_list(self):
-        url = 'http://poj.org/userstatus?user_id='+self.username
+        url = 'http://poj.org/userstatus?user_id='+self.account.nickname
         try_time = 3
         while try_time:
             try :
@@ -65,28 +63,31 @@ class POJSpider(BaseSpider):
             try_time -= 1
         return []
 
-    def get_status(self, pro_id):
-        url = 'http://poj.org/status?problem_id='+pro_id+'&user_id='+self.username+'&result=0'
+    def get_status(self, start):
+        url = 'http://poj.org/status?user_id={0}&top={1}'.format(self.account.nickname, start)
         try_time = 3
+        slist = []
         while try_time:
             try:
                 page = self.load_page(url)
-                soup = BeautifulSoup(page)
-                tds = soup.select('tr[align="center"]')[0]
-                status = []
-                index = 0
-                for value in tds:
-                    if index in [0, 4, 5, 6, 8]:
-                        status.append(value.text)
-                    index += 1
-                ret = {'pro_id': pro_id,
-                       'run_id': status[0],
-                       'submit_time': status[4],
-                       'run_time': status[2][:-2],
-                       'memory': status[1][:-1],
-                       'lang': status[3]}
-                ret['code'] = self.get_solved_code(ret['run_id'])
-                return ret
+                soup = BeautifulSoup(page, 'html5lib')
+                tds = soup.select('tr[align="center"]')#[2].select('td')
+                for td in tds:
+                    status = []
+                    index = 0
+                    for value in td:
+                        if index in [0, 2, 3, 4, 5, 6, 8]:
+                            status.append(value.text)
+                        index += 1
+                    ret = {'pro_id': status[1], 'run_id': status[0], 'submit_time': status[6], 'run_time': status[4][:-2],
+                           'memory': status[3][:-1], 'lang': status[5], 'result': status[2]}
+                    ret['code'] = self.get_solved_code(ret['run_id'])
+                    if ret['run_time'] == '':
+                        ret['run_time'] = '-1'
+                    if ret['memory'] == '':
+                        ret['memory'] = '-1'
+                    slist.append(ret)
+                return slist
             except Exception, e:
                 time.sleep(10)
             try_time -= 1
@@ -101,17 +102,39 @@ class POJSpider(BaseSpider):
         except Exception, e:
             raise Exception("crawl code error " + e.message)
 
-    def update_account(self, account):
+    def update_submit(self, init):
+        start = ''
+        while True:
+            slist = self.get_status(start)
+            if not slist:
+                return
+            try:
+                for status in slist:
+                    nsub = Submit.query.filter(Submit.run_id == status['run_id'], Submit.oj_name == self.account.oj_name).first()
+                    if nsub and not init:
+                        return
+                    if not nsub:
+                        nsub = Submit(status['pro_id'], self.account)
+                        nsub.update_info(status['run_id'],status['submit_time'],status['run_time'],status['memory'],status['lang'],status['code'],status['result'])
+            except Exception, e:
+                db.session.rollback()
+                raise Exception('update Status Error:' + e.message)
+            if init:
+                db.session.commit()
+            time.sleep(2)
+            start = slist[-1]['run_id']
+        self.account.last_update_time = datetime.datetime.now()
+        db.session.commit()
+
+    def update_account(self, init):
+        if not self.account:
+            return
         self.login()
         if not self.login_status:
             return False
         count = self.get_problem_count()
-        account.set_problem_count(count['solved'], count['submitted'])
-        account.last_update_time = datetime.datetime.now()
-        account.save()
-        solved_list = self.get_solved_list()
-        for problem in solved_list:
-            if not Submit.query.filter(Submit.pro_id == problem, Submit.account == account).first():
-                nwork = Submit(problem, account)
-                nwork.save()
+        self.account.set_problem_count(count['solved'], count['submitted'])
+        self.account.last_update_time = datetime.datetime.now()
+        self.account.save()
+        self.update_submit(init)
 
