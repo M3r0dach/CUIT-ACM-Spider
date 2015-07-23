@@ -24,21 +24,20 @@ class BaseSpider():
         req = urllib2.Request(url, headers=self.headers)
         page = ''
         try:
-            response = urllib2.urlopen(req, timeout=10)
+            response = urllib2.urlopen(req, timeout=20)
             page = response.read()
+            return page
         except urllib2.HTTPError, e:
             raise Exception('Open the request Failed!:', e.code, url)
         except urllib2.URLError, e:
             raise Exception('Open the url Failed!:', e.reason, url)
         except Exception, e:
             raise Exception('Open the page Failed!:' + e.message)
-        finally:
-            return page
 
     def urlopen_with_data(self, url,  post_data):
         req = urllib2.Request(url, post_data, headers=self.headers)
         try:
-            response = urllib2.urlopen(req, timeout=10)
+            response = urllib2.urlopen(req, timeout=20)
             return response
         except Exception, e:
             raise Exception('Open the url Failed:' + e.message)

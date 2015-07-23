@@ -30,7 +30,7 @@ class POJSpider(BaseSpider):
         url = 'http://poj.org/userstatus?user_id='+self.account.nickname
         try:
             page = self.load_page(url)
-            soup = BeautifulSoup(page)
+            soup = BeautifulSoup(page, 'html5lib')
             solved = soup.find(text='Solved:').parent.next_sibling.next_sibling.text
             submitted = soup.find(text='Submissions:').parent.next_sibling.next_sibling.text
             return {'solved': solved, 'submitted': submitted}
@@ -43,7 +43,7 @@ class POJSpider(BaseSpider):
         while try_time:
             try :
                 page = self.load_page(url)
-                soup = BeautifulSoup(page)
+                soup = BeautifulSoup(page, 'html5lib')
                 pro_set = soup.select('script')[1].text.split('}')[1]
                 if pro_set:
                     problem_list = pro_set.split(')')
@@ -91,16 +91,20 @@ class POJSpider(BaseSpider):
             except Exception, e:
                 time.sleep(10)
             try_time -= 1
-        return None
+        raise Exception('Get Status Error:')
 
     def get_solved_code(self, run_id):
         url = 'http://poj.org/showsource?solution_id='+run_id
-        try :
-            page = self.load_page(url)
-            soup = BeautifulSoup(page)
-            return soup.find('pre').text
-        except Exception, e:
-            raise Exception("crawl code error " + e.message)
+        try_time = 3
+        while try_time:
+            try :
+                page = self.load_page(url)
+                soup = BeautifulSoup(page, 'html5lib')
+                return soup.find('pre').text
+            except Exception, e:
+                time.sleep(5)
+            try_time-=1
+        raise Exception("crawl code error")
 
     def update_submit(self, init):
         start = ''
@@ -128,10 +132,10 @@ class POJSpider(BaseSpider):
 
     def update_account(self, init):
         if not self.account:
-            return
+            raise Exception("POJ account not set")
         self.login()
         if not self.login_status:
-            return False
+            raise Exception("POJ account login failed")
         count = self.get_problem_count()
         self.account.set_problem_count(count['solved'], count['submitted'])
         self.account.last_update_time = datetime.datetime.now()

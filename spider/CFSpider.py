@@ -108,7 +108,7 @@ class CFSpider(BaseSpider):
 
     def update_account(self, init):
         if not self.account:
-            return
+            raise Exception("CF account not set")
         count = self.get_problem_count()
         self.account.set_problem_count(count['solved'], count['submitted'])
         self.account.last_update_time = datetime.datetime.now()

@@ -1,14 +1,15 @@
-from dao.dbBase import User, db
+from dao.db import db
+from dao.dbBase import User
 from flask import Flask
 import datetime
 import sys
 import time
 from multiprocessing import Process
-from threading import Thread
+from threading import Thread, RLock
 import logging
 from logging import FileHandler
 from logging import Formatter
-from dao.dbACCOUNT import Account
+from dao.dbACCOUNT import Account, AccountStatus
 from dao.dbSUBMIT import Submit
 from spider.CFSpider import CFSpider
 from spider.HDUSpider import HDUSpider
@@ -17,6 +18,7 @@ from spider.ZOJSpider import ZOJSpider
 from spider.UVASpider import UVASpider
 from spider.BNUSpider import BNUSpider
 from spider.BCSpider import BCSpider
+from spider.VJSpider import VJSpider
 from flask.ext.sqlalchemy import SQLAlchemy
 from sqlalchemy import or_
 
@@ -30,55 +32,62 @@ file_handler.setFormatter(Formatter(
     '%(asctime)s %(levelname)s: %(message)s '
     '[in %(pathname)s:%(lineno)d]'))
 app.logger.addHandler(file_handler)
-
+spider_lock = RLock()
 
 class AccountUpdateServer(Thread):
 
     def __init__(self,  oj_name):
         Thread.__init__(self)
         self.oj_name = oj_name
-        spider_module_name = sys.modules['spider.' + self.oj_name.upper()+'Spider']
-        spider_class_name = oj_name.upper()+'Spider'
-        self.spider = getattr(spider_module_name, spider_class_name)()
+        self.spider_module_name = sys.modules['spider.' + self.oj_name.upper()+'Spider']
+        self.spider_class_name = oj_name.upper()+'Spider'
+        self.spider = getattr(self.spider_module_name, self.spider_class_name)()
 
-    def update_user(self, user):
-        now = datetime.datetime.now()
-        permit_date = now - datetime.timedelta(days=now.weekday())
-        permit_date = permit_date.replace(hour=0, minute=0, second=0)
-        permit_date1 = permit_date - datetime.timedelta(days=7)
-        lastsubmitted = user.submit.filter(Submit.submit_time < permit_date, Submit.submit_time > permit_date1)
-        lastsolved = lastsubmitted.filter(or_(Submit.result == 'OK', Submit.result == 'Accepted'))
-        currentsubmitted = user.submit.filter(Submit.submit_time > permit_date)
-        currentolved = currentsubmitted.filter(or_(Submit.result == 'OK', Submit.result == 'Accepted'))
-        user.last_week_solved = lastsolved.count()
-        user.last_week_submit = lastsubmitted.count()
-        user.current_week_solved = currentolved.count()
-        user.current_week_submit = currentsubmitted.count()
-        user.update_score()
+    def get_an_available_account(self):
+        spider_lock.acquire()
+        try:
+            permit_date = datetime.datetime.now() - datetime.timedelta(hours=app.config['SERVER_TIME_DELTTA'])
+            query = Account.query.filter(Account.oj_name==self.oj_name)
+            query = query.filter(Account.update_status!=AccountStatus.UPDATING)
+            query = query.filter(or_(Account.last_update_time<permit_date,Account.update_status!=AccountStatus.NORMAL))
+            account = query.order_by(Account.last_update_time.asc()).with_lockmode('update').first()
+            if not account:
+                db.session.commit()
+                return
+            else:
+                self.origin_status = account.update_status
+                account.update_status = AccountStatus.UPDATING
+                account.save()
+                return account
+        except:
+            pass
+        finally:
+            spider_lock.release()
+
+    def do_spy(self, account, init):
+        self.spider.set_account(account)
+        if hasattr(self.spider, 'update_account'):
+            self.spider.update_account(init)
+        user = User.query.filter(User.id == account.user_id).with_lockmode('update').first()
+        user.update()
 
     def run(self):
         while True:
             with app.app_context():
                 try:
-                    permit_date = datetime.datetime.now() - datetime.timedelta(hours=app.config['SERVER_TIME_DELTTA'])
-                    account = Account.query.filter(Account.oj_name ==  self.oj_name, or_(Account.last_update_time<permit_date,Account.update_status!=0)).with_lockmode('update').first()
+                    account = self.get_an_available_account()
                     if not account:
-                        db.session.commit()
                         time.sleep(10)
                         continue
-                    init = True if account.update_status == 1 else False
-                    origin_status = account.update_status
+                    init = True if self.origin_status  == AccountStatus.NOT_INIT else False
+
                     try:
-                        account.update_status = 1
-                        self.spider.set_account(account)
-                        if hasattr(self.spider,'update_account'):
-                            self.spider.update_account(init)
-                        account.update_status = 0
-                        user = User.query.filter(User.id == account.user_id).with_lockmode('update').first()
-                        self.update_user(user)
+                        self.do_spy(account, init)
+                        account.update_status = AccountStatus.NORMAL
                     except Exception, e:
                         db.session.rollback()
-                        account.update_status = 2 if origin_status == 0 else origin_status
+                        account.last_update_time = datetime.datetime.now()
+                        account.update_status = AccountStatus.NOT_INIT if self.origin_status == AccountStatus.NOT_INIT else AccountStatus.UPDATE_ERROR
                         app.logger.error('['+self.oj_name+'] update account error! :' + e.message)
                     finally:
                         db.session.commit()
@@ -86,12 +95,12 @@ class AccountUpdateServer(Thread):
                     db.session.rollback()
                     db.session.commit()
                     app.logger.error('['+self.oj_name+'] update error! :' + e.message)
-                time.sleep(4)
+                time.sleep(60)
                      
 
 if __name__ == '__main__':
     ProcessMap = {}
-    for oj in ['bnu','cf','bc','uva','hdu','poj','zoj']:
+    for oj in ['bnu','cf','bc','uva','hdu','poj','zoj','vj']:
         ProcessMap[oj+'AccountUpdateServer'] = AccountUpdateServer(oj)
         ProcessMap[oj+'AccountUpdateServer'].start()
 

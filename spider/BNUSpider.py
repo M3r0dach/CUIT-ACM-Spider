@@ -28,7 +28,7 @@ class BNUSpider(BaseSpider):
         url = 'http://acm.bnu.edu.cn/v3/userinfo.php?name=' + self.account.nickname
         try :
             page = self.load_page(url)
-            soup = BeautifulSoup(page)
+            soup = BeautifulSoup(page, 'html5lib')
             submitted = soup.find('th', text='Total Submissions').next_sibling.next_sibling.text
             solved = soup.find('th', text='Accepted').next_sibling.next_sibling.text
             return {'solved': solved, 'submitted': submitted}
@@ -39,7 +39,7 @@ class BNUSpider(BaseSpider):
         url = 'http://acm.bnu.edu.cn/v3/userinfo.php?name=' + self.account.nickname
         try :
             page = self.load_page(url)
-            soup = BeautifulSoup(page)
+            soup = BeautifulSoup(page, 'html5lib')
             pro_set = soup.select('#userac > a')
             ret = []
             for pro in pro_set:
@@ -158,16 +158,16 @@ class BNUSpider(BaseSpider):
         try:
             page = self.load_page(url)
             info = json.JSONDecoder().decode(page)
-            return BeautifulSoup(info['source']).text
+            return BeautifulSoup(info['source'], 'html5lib').text
         except Exception, e:
             raise Exception("BNU crawl code error " + e.message)
 
     def update_account(self, init):
         if not self.account:
-            return
+            raise Exception("BNU account not set")
         self.login()
         if not self.login_status:
-            return
+            raise Exception("BNU account login failed")
         count = self.get_problem_count()
         self.account.set_problem_count(count['solved'], count['submitted'])
         self.account.last_update_time = datetime.datetime.now()

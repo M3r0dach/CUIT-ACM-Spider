@@ -2,7 +2,7 @@
 #The database URI that should be used for the connection.
 #fomate: dialect+driver://username:password@host:port/database
 #mysql format : mysql://scott:tiger@localhost/database_name
-SQLALCHEMY_DATABASE_URI = 'mysql://root:zzyacmer@localhost/oj_helper_test'
+SQLALCHEMY_DATABASE_URI = 'mysql://root:63005610@localhost/cuit_acm'
 
 #A dictionary that maps bind keys to SQLAlchemy connection URIs.
 SQLALCHEMY_BINDS = {}
@@ -16,7 +16,8 @@ OJ_MAP = {
     'poj': 'POJ',
     'uva': 'UVA',
     'zoj': 'ZOJ',
-    'bnu': 'BNU'
+    'bnu': 'BNU',
+    'vj': 'Virtual Judge',
 }
 
 SERVER_TIME_DELTTA = 6

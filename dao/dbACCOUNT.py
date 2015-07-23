@@ -1,7 +1,15 @@
 from __init__ import *
-from dbBase import db
 from util import security
 import datetime
+from dao.db import db
+
+class AccountStatus():
+    NORMAL = 0
+    NOT_INIT = 1
+    WAIT_FOR_UPDATE = 2
+    UPDATING = 3
+    UPDATE_ERROR = 4
+
 # Table of Account
 class Account(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -32,8 +40,7 @@ class Account(db.Model):
         self.password_hash = security.encrypt(value.encode('utf-8'))
 
     def __repr__(self):
-        #return '<Account %s>' % self.nickname
-        return '<%s Account %s>: %d / %d' % (self.oj_name, self.nickname, self.solved, self.submitted)
+        return '<%s Account %s>: %d / %d' % (self.oj_name, self.nickname, self.solved_or_rating, self.submitted_or_max_rating)
 
     def set_problem_count(self, v1, v2):
         self.solved_or_rating = v1
@@ -41,10 +48,14 @@ class Account(db.Model):
 
     def get_problem_count(self):
         if self.oj_name in ['cf', 'bc']:
-            return  {'rating': self.solved_or_rating, 'max_rating': self.submitted_or_max_rating}
+            return {'rating': self.solved_or_rating, 'max_rating': self.submitted_or_max_rating}
         else:
             return {'solved': self.solved_or_rating, 'submitted': self.submitted_or_max_rating}
 
     def save(self):
         db.session.add(self)
+        db.session.commit()
+
+    def delete(self):
+        db.session.delete(self)
         db.session.commit()

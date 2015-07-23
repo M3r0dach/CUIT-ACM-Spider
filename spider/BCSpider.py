@@ -10,7 +10,7 @@ class BCSpider(BaseSpider):
         url = 'http://bestcoder.hdu.edu.cn/rating.php?user='+self.account.nickname
         try:
             page = self.load_page(url)
-            soup = BeautifulSoup(page)
+            soup = BeautifulSoup(page, 'html5lib')
             info_elements = soup.find(text='Rating: ').parent.next_sibling.next_sibling.text.split(' ')
             rating = info_elements[0]
             max_rating = info_elements[2][:-1]
@@ -20,7 +20,7 @@ class BCSpider(BaseSpider):
 
     def update_account(self, init):
         if not self.account:
-            return
+            raise Exception('BestCoder Account Not Set')
         count = self.get_problem_count()
         self.account.set_problem_count(count['solved'], count['submitted'])
         self.account.last_update_time = datetime.datetime.now()

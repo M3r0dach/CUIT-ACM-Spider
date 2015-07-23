@@ -33,7 +33,7 @@ class HDUSpider(BaseSpider):
         url = 'http://acm.hdu.edu.cn/userstatus.php?user='+self.account.nickname
         try:
             page = self.load_page(url)
-            soup = BeautifulSoup(page)
+            soup = BeautifulSoup(page, 'html5lib')
             solved = soup.find(text='Problems Solved').parent.next_sibling.text
             submitted = soup.find(text='Problems Submitted').parent.next_sibling.text
             return {'solved': solved, 'submitted': submitted}
@@ -44,7 +44,7 @@ class HDUSpider(BaseSpider):
         url = 'http://acm.hdu.edu.cn/userstatus.php?user='+self.account.nickname
         try:
             page = self.load_page(url)
-            soup = BeautifulSoup(page)
+            soup = BeautifulSoup(page, 'html5lib')
             pro_set = soup.select('p > script')[0].text
             if pro_set:
                 problem_list = pro_set.split(';')
@@ -89,7 +89,7 @@ class HDUSpider(BaseSpider):
         url = 'http://acm.hdu.edu.cn/viewcode.php?rid='+run_id
         try:
             page = self.load_page(url)
-            soup = BeautifulSoup(page)
+            soup = BeautifulSoup(page, 'html5lib')
             return soup.find('textarea').text
         except Exception, e:
             raise Exception("crawl code error "+run_id + e.message)
@@ -120,10 +120,10 @@ class HDUSpider(BaseSpider):
 
     def update_account(self, init):
         if not self.account:
-            return
+            raise Exception("HDU account not set")
         self.login()
         if not self.login_status:
-            return False
+            raise Exception("HDU account login failed")
         count = self.get_problem_count()
         self.account.set_problem_count(count['solved'], count['submitted'])
         self.account.last_update_time = datetime.datetime.now()

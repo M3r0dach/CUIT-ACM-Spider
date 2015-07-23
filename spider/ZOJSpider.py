@@ -27,7 +27,7 @@ class ZOJSpider(BaseSpider):
     def get_user_status_href(self):
         url = 'http://acm.zju.edu.cn/onlinejudge'
         page = self.load_page(url)
-        soup = BeautifulSoup(page)
+        soup = BeautifulSoup(page, 'html5lib')
         href = soup.select('td > a')[1].attrs.get('href')
         self.status_url ='http://acm.zju.edu.cn' + href
 
@@ -36,7 +36,7 @@ class ZOJSpider(BaseSpider):
         try:
             url = self.status_url
             page = self.load_page(url)
-            soup = BeautifulSoup(page)
+            soup = BeautifulSoup(page, 'html5lib')
             ac_ratio = soup.find(text='AC Ratio:').parent.next_sibling.next_sibling.text.strip().split('/')
 
             return {'solved': ac_ratio[0], 'submitted': ac_ratio[1]}
@@ -47,7 +47,7 @@ class ZOJSpider(BaseSpider):
         try:
             url = self.status_url
             page = self.load_page(url)
-            soup = BeautifulSoup(page)
+            soup = BeautifulSoup(page, 'html5lib')
             pro_set = soup.find_all(href=re.compile('problemCode'))
             ret = []
             for problem in pro_set:
@@ -61,7 +61,7 @@ class ZOJSpider(BaseSpider):
         page = self.load_page(url)
         slist = []
         try:
-            soup = BeautifulSoup(page)
+            soup = BeautifulSoup(page, 'html5lib')
             trs = soup.select('.list > tbody > tr')
             for tr in trs:
                 status = []
@@ -117,9 +117,11 @@ class ZOJSpider(BaseSpider):
 
 
     def update_account(self, init):
+        if not self.account:
+            raise Exception("ZOJ account not set")
         self.login()
         if not self.login_status:
-            return False
+            raise Exception("ZOJ account login failed")
         count = self.get_problem_count()
         self.account.set_problem_count(count['solved'], count['submitted'])
         self.account.last_update_time = datetime.datetime.now()

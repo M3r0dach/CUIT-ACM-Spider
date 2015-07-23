@@ -43,7 +43,7 @@ class UVASpider(BaseSpider):
         url = 'http://uva.onlinejudge.org/index.php?option=com_onlinejudge&Itemid=20&page=show_authorstats&userid='+self.account.password
         try:
             page = self.load_page(url)
-            soup = BeautifulSoup(page)
+            soup = BeautifulSoup(page, 'html5lib')
             info_element = soup.find(text='SUBMISSIONS').parent.parent.previous_sibling.previous_sibling
             submitted = info_element.contents[1].text
             solved = info_element.contents[3].text
@@ -53,7 +53,7 @@ class UVASpider(BaseSpider):
 
     def update_account(self, init):
         if not self.account:
-            return
+            raise Exception("UVA account not set")
         count = self.get_problem_count()
         self.account.set_problem_count(count['solved'], count['submitted'])
         self.account.last_update_time = datetime.datetime.now()

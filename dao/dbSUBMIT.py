@@ -1,14 +1,14 @@
 from __init__ import *
-from dbBase import db
+from dao.db import db
 
 class Submit(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     pro_id = db.Column(db.String(12))
     run_id = db.Column(db.String(20))
-    submit_time = db.Column(db.DateTime)
+    submit_time = db.Column(db.DateTime, index=True)
     run_time = db.Column(db.Integer)
     memory = db.Column(db.Integer)
-    lang = db.Column(db.String(20))
+    lang = db.Column(db.String(50))
     result = db.Column(db.String(100))
     code = db.Column(db.Text)
     update_status = db.Column(db.Integer)
@@ -37,9 +37,12 @@ class Submit(db.Model):
         self.save()
 
     def __repr__(self):
-        return '<BNU Submit> \t"%s" \t%s \t%sMS \t%sKB \t%s \t%s' \
-               % (self.account_name, self.pro_id, self.run_time, self.memory, self.lang, self.submit_time)
+        return u'User:"{0}" \tProblemID : {1} \tRUNID : {2}'.format(self.user_name, self.pro_id, self.run_id)
 
     def save(self):
         db.session.add(self)
+        db.session.commit()
+
+    def delete(self):
+        db.session.delete(self)
         db.session.commit()
