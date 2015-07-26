@@ -10,7 +10,6 @@ class VJSpider(BaseSpider):
     def __init__(self):
         BaseSpider.__init__(self)
         self.login_url = 'http://acm.hust.edu.cn/vjudge/user/login.action'
-        self.login_status = False
 
     def login(self):
         data = {'username': self.account.nickname,'password':self.account.password}
@@ -18,6 +17,7 @@ class VJSpider(BaseSpider):
             response = self.urlopen_with_data(self.login_url, urllib.urlencode(data))
             status = response.getcode()
             page = response.read()
+            info = json.JSONDecoder().decode(page)
             if (status != 200 and status != 302 or info!='success'):
                 return False
             self.login_status = True

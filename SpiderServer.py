@@ -100,6 +100,9 @@ class AccountUpdateServer(Thread):
 
 if __name__ == '__main__':
     ProcessMap = {}
+    with app.app_context():
+        Account.query.filter(Account.update_status==AccountStatus.UPDATING).update({Account.update_status:AccountStatus.NOT_INIT})
+        db.session.commit()
     for oj in ['bnu','cf','bc','uva','hdu','poj','zoj','vj']:
         ProcessMap[oj+'AccountUpdateServer'] = AccountUpdateServer(oj)
         ProcessMap[oj+'AccountUpdateServer'].start()

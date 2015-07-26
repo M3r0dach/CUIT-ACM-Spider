@@ -9,7 +9,6 @@ class HDUSpider(BaseSpider):
     def __init__(self):
         BaseSpider.__init__(self)
         self.login_url = 'http://acm.hdu.edu.cn/userloginex.php?action=login'
-        self.login_status = False
 
     def login(self):
         data = {'username': self.account.nickname, 'userpass': self.account.password, 'login': 'Sign In'}

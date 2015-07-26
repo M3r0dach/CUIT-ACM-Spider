@@ -8,7 +8,6 @@ class BNUSpider(BaseSpider):
     def __init__(self):
         BaseSpider.__init__(self)
         self.login_url = 'http://acm.bnu.edu.cn/v3/ajax/login.php'
-        self.login_status = False
 
     def login(self):
         data = {'username': self.account.nickname,'password':self.account.password, 'cksave':'1'}

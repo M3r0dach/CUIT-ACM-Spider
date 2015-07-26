@@ -8,7 +8,6 @@ class ZOJSpider(BaseSpider):
         BaseSpider.__init__(self)
         self.login_url = 'http://acm.zju.edu.cn/onlinejudge/login.do'
         self.status_url = ''
-        self.login_status = False
 
     def login(self):
         data = {'handle': self.account.nickname, 'password': self.account.password}

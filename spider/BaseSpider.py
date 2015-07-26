@@ -6,14 +6,17 @@ class BaseSpider():
     def __init__(self):
         self.user_agent = "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/40.0.2214.115 Safari/537.36"
         self.headers =  {'User-Agent': self.user_agent}
-        self.cookieJar = cookielib.LWPCookieJar()
+        self.cookieJar = cookielib.CookieJar()
         self.opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(self.cookieJar), urllib2.HTTPHandler)
         urllib2.install_opener(self.opener)
+        self.login_status = False
 
     def set_user_agent(self, user_agent):
         self.user_agent = user_agent
 
     def set_account(self, account):
+        self.login_status = False
+        self.cookieJar.clear()
         self.account = account
 
     def login(self):

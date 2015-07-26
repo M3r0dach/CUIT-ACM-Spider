@@ -7,7 +7,6 @@ class POJSpider(BaseSpider):
     def __init__(self):
         BaseSpider.__init__(self)
         self.login_url = 'http://poj.org/login'
-        self.login_status = False
 
     def login(self):
         data = {'user_id1': self.account.nickname, 'password1': self.account.password, 'B1': 'login', 'url': '/'}
