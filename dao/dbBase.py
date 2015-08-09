@@ -71,10 +71,10 @@ class User(UserMixin, db.Model):
             for account in accounts:
                 if account.oj_name in ['cf', 'bc']:
                     tmp = account.get_problem_count()
-                    score += tmp['rating']*0.4 + tmp['max_rating']*0.1
+                    score += tmp['rating']*0.3
                 else:
                     tmp = account.get_problem_count()
-                    score += tmp['solved']*0.5
+                    score += tmp['solved']*0.7
         self.score = score
 
     def update(self):
