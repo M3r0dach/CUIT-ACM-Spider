@@ -58,3 +58,4 @@ class UVASpider(BaseSpider):
         self.account.set_problem_count(count['solved'], count['submitted'])
         self.account.last_update_time = datetime.datetime.now()
         self.account.save()
+        self.logout()

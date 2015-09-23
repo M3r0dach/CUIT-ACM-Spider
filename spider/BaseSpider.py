@@ -15,9 +15,11 @@ class BaseSpider():
         self.user_agent = user_agent
 
     def set_account(self, account):
+        self.account = account
+
+    def logout(self):
         self.login_status = False
         self.cookieJar.clear()
-        self.account = account
 
     def login(self):
         pass

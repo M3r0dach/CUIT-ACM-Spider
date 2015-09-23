@@ -140,4 +140,5 @@ class POJSpider(BaseSpider):
         self.account.last_update_time = datetime.datetime.now()
         self.account.save()
         self.update_submit(init)
+        self.logout()
 
