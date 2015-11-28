@@ -11,17 +11,14 @@ class BNUSpider(BaseSpider):
 
     def login(self):
         data = {'username': self.account.nickname,'password':self.account.password, 'cksave':'1'}
-        try:
-            response = self.urlopen_with_data(self.login_url, urllib.urlencode(data))
-            status = response.getcode()
-            page = response.read()
-            info = json.JSONDecoder().decode(page)
-            if (status != 200 and status != 302 or info['code']!=0):
-                return False
-            self.login_status = True
-            return True
-        except Exception, e:
+        response = self.urlopen_with_data(self.login_url, urllib.urlencode(data))
+        status = response.getcode()
+        page = response.read()
+        info = json.JSONDecoder().decode(page)
+        if (status != 200 and status != 302 or info['code']!=0):
             return False
+        self.login_status = True
+        return True
 
     def get_problem_count(self):
         url = 'http://acm.bnu.edu.cn/v3/userinfo.php?name=' + self.account.nickname

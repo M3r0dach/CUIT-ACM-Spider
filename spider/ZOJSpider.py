@@ -11,17 +11,14 @@ class ZOJSpider(BaseSpider):
 
     def login(self):
         data = {'handle': self.account.nickname, 'password': self.account.password}
-        try:
-            response = self.urlopen_with_data(self.login_url,urllib.urlencode(data))
-            status = response.getcode()
-            page = response.read()
-            if (status != 200 and status != 302) or page.find('Logout') == -1:
-                return False
-            self.get_user_status_href()
-            self.login_status = True
-            return True
-        except Exception, e:
+        response = self.urlopen_with_data(self.login_url,urllib.urlencode(data))
+        status = response.getcode()
+        page = response.read()
+        if (status != 200 and status != 302) or page.find('Logout') == -1:
             return False
+        self.get_user_status_href()
+        self.login_status = True
+        return True
 
     def get_user_status_href(self):
         url = 'http://acm.zju.edu.cn/onlinejudge'

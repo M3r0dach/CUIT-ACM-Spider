@@ -13,17 +13,14 @@ class VJSpider(BaseSpider):
 
     def login(self):
         data = {'username': self.account.nickname,'password':self.account.password}
-        try:
-            response = self.urlopen_with_data(self.login_url, urllib.urlencode(data))
-            status = response.getcode()
-            page = response.read()
-            info = json.JSONDecoder().decode(page)
-            if (status != 200 and status != 302 or info!='success'):
-                return False
-            self.login_status = True
-            return True
-        except Exception, e:
+        response = self.urlopen_with_data(self.login_url, urllib.urlencode(data))
+        status = response.getcode()
+        page = response.read()
+        info = json.JSONDecoder().decode(page)
+        if (status != 200 and status != 302 or info!='success'):
             return False
+        self.login_status = True
+        return True
 
     def get_problem_count(self):
         try :

@@ -13,16 +13,13 @@ class HDUSpider(BaseSpider):
 
     def login(self):
         data = {'username': self.account.nickname, 'userpass': self.account.password, 'login': 'Sign In'}
-        try:
-            response = self.urlopen_with_data(self.login_url, urllib.urlencode(data))
-            status = response.getcode()
-            page = response.read()
-            if (status != 200 and status != 302) or page.find('Sign Out') == -1:
-                return False
-            self.login_status = True
-            return True
-        except Exception, e:
+        response = self.urlopen_with_data(self.login_url, urllib.urlencode(data))
+        status = response.getcode()
+        page = response.read()
+        if (status != 200 and status != 302) or page.find('Sign Out') == -1:
             return False
+        self.login_status = True
+        return True
 
     def fix_problem_id(self, string):
         start = string.find('(') + 1
