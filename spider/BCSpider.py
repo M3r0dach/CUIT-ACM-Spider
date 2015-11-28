@@ -1,5 +1,5 @@
 from __init__ import *
-from BaseSpider import BaseSpider
+from BaseSpider import BaseSpider, LoginFailedException
 from dao.dbACCOUNT import Account
 import json
 

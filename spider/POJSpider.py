@@ -1,5 +1,5 @@
 from __init__ import *
-from BaseSpider import BaseSpider
+from BaseSpider import BaseSpider, LoginFailedException
 from util.ThreadingPool import ThreadPool
 
 class POJSpider(BaseSpider):
@@ -92,6 +92,7 @@ class POJSpider(BaseSpider):
             try_time -= 1
         raise Exception('Get Status Error:')
 
+    @try_times(3)
     def get_solved_code(self, run_id):
         url = 'http://poj.org/showsource?solution_id='+run_id
         try_time = 3
@@ -134,7 +135,7 @@ class POJSpider(BaseSpider):
             raise Exception("POJ account not set")
         self.login()
         if not self.login_status:
-            raise Exception("POJ account login failed")
+            raise LoginFailedException("POJ account login failed")
         count = self.get_problem_count()
         self.account.set_problem_count(count['solved'], count['submitted'])
         self.account.last_update_time = datetime.datetime.now()

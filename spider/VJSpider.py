@@ -1,5 +1,5 @@
 from __init__ import *
-from BaseSpider import BaseSpider
+from BaseSpider import BaseSpider,LoginFailedException
 from util.ThreadingPool import ThreadPool
 import json
 from dao.dbACCOUNT import Account
@@ -163,6 +163,7 @@ class VJSpider(BaseSpider):
         self.account.last_update_time = datetime.datetime.now()
         db.session.commit()
 
+    @try_times(3)
     def get_solved_code(self, run_id):
         url = 'http://acm.hust.edu.cn/vjudge/problem/viewSource.action?id={0}'.format(run_id)
         try:
@@ -178,7 +179,7 @@ class VJSpider(BaseSpider):
             raise Exception("Virtual Judge account not set")
         self.login()
         if not self.login_status:
-            raise Exception("Virtual Judge account login failed")
+            raise LoginFailedException("Virtual Judge account login failed")
         self.update_submit(init)
         count = self.get_problem_count()
         self.account.set_problem_count(count['solved'], count['submitted'])

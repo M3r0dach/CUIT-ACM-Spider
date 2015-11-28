@@ -1,5 +1,6 @@
 from __init__ import *
-from BaseSpider import BaseSpider
+from BaseSpider import BaseSpider, LoginFailedException
+from util.functional import try_times
 from dao.dbACCOUNT import Account
 from util.ThreadingPool import ThreadPool
 
@@ -83,7 +84,7 @@ class HDUSpider(BaseSpider):
         except Exception, e:
             raise Exception('Get Status Error:' + e.message)
 
-
+    @try_times(3)
     def get_solved_code(self, run_id):
         url = 'http://acm.hdu.edu.cn/viewcode.php?rid='+run_id
         try:
@@ -122,7 +123,7 @@ class HDUSpider(BaseSpider):
             raise Exception("HDU account not set")
         self.login()
         if not self.login_status:
-            raise Exception("HDU account login failed")
+            raise LoginFailedException("HDU account login failed")
         count = self.get_problem_count()
         self.account.set_problem_count(count['solved'], count['submitted'])
         self.account.last_update_time = datetime.datetime.now()

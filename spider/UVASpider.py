@@ -1,5 +1,5 @@
 from __init__ import *
-from BaseSpider import BaseSpider
+from BaseSpider import BaseSpider, LoginFailedException
 
 class UVASpider(BaseSpider):
 
