@@ -1,5 +1,7 @@
 from __init__ import *
-from BaseSpider import BaseSpider
+from BaseSpider import BaseSpider, LoginFailedException
+from dao.dbACCOUNT import Account
+import json
 
 class BCSpider(BaseSpider):
 
@@ -7,13 +9,15 @@ class BCSpider(BaseSpider):
         BaseSpider.__init__(self)
 
     def get_problem_count(self):
-        url = 'http://bestcoder.hdu.edu.cn/rating.php?user='+self.account.nickname
+        url = 'http://bestcoder.hdu.edu.cn/api/api.php?type=user-rating&user='+self.account.nickname
         try:
             page = self.load_page(url)
-            soup = BeautifulSoup(page, 'html5lib')
-            info_elements = soup.find(text='Rating: ').parent.next_sibling.next_sibling.text.split(' ')
-            rating = info_elements[0]
-            max_rating = info_elements[2][:-1]
+            data = json.JSONDecoder().decode(page)
+            try:
+                rating = data[-1]['rating']
+                max_rating = max(data , key = lambda x: x['rating'])['rating']
+            except:
+                rating = max_rating = 0
             return {'solved': rating, 'submitted': max_rating}
         except Exception, e:
             raise Exception('Get Problem Count Error:' + e.message)
@@ -25,5 +29,3 @@ class BCSpider(BaseSpider):
         self.account.set_problem_count(count['solved'], count['submitted'])
         self.account.last_update_time = datetime.datetime.now()
         self.account.save()
-
-

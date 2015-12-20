@@ -1,5 +1,5 @@
 from __init__ import *
-from BaseSpider import BaseSpider
+from BaseSpider import BaseSpider,LoginFailedException
 from util.ThreadingPool import ThreadPool
 import json
 from dao.dbACCOUNT import Account
@@ -13,17 +13,14 @@ class VJSpider(BaseSpider):
 
     def login(self):
         data = {'username': self.account.nickname,'password':self.account.password}
-        try:
-            response = self.urlopen_with_data(self.login_url, urllib.urlencode(data))
-            status = response.getcode()
-            page = response.read()
-            info = json.JSONDecoder().decode(page)
-            if (status != 200 and status != 302 or info!='success'):
-                return False
-            self.login_status = True
-            return True
-        except Exception, e:
+        response = self.urlopen_with_data(self.login_url, urllib.urlencode(data))
+        status = response.getcode()
+        page = response.read()
+        info = json.JSONDecoder().decode(page)
+        if (status != 200 and status != 302 or info!='success'):
             return False
+        self.login_status = True
+        return True
 
     def get_problem_count(self):
         try :
@@ -163,6 +160,7 @@ class VJSpider(BaseSpider):
         self.account.last_update_time = datetime.datetime.now()
         db.session.commit()
 
+    @try_times(3)
     def get_solved_code(self, run_id):
         url = 'http://acm.hust.edu.cn/vjudge/problem/viewSource.action?id={0}'.format(run_id)
         try:
@@ -178,9 +176,10 @@ class VJSpider(BaseSpider):
             raise Exception("Virtual Judge account not set")
         self.login()
         if not self.login_status:
-            raise Exception("Virtual Judge account login failed")
+            raise LoginFailedException("Virtual Judge account login failed")
         self.update_submit(init)
         count = self.get_problem_count()
         self.account.set_problem_count(count['solved'], count['submitted'])
         self.account.last_update_time = datetime.datetime.now()
         self.account.save()
+        self.logout()

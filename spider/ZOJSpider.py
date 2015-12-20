@@ -1,5 +1,5 @@
 from __init__ import *
-from BaseSpider import BaseSpider
+from BaseSpider import BaseSpider, LoginFailedException
 from util.ThreadingPool import ThreadPool
 
 class ZOJSpider(BaseSpider):
@@ -11,17 +11,14 @@ class ZOJSpider(BaseSpider):
 
     def login(self):
         data = {'handle': self.account.nickname, 'password': self.account.password}
-        try:
-            response = self.urlopen_with_data(self.login_url,urllib.urlencode(data))
-            status = response.getcode()
-            page = response.read()
-            if (status != 200 and status != 302) or page.find('Logout') == -1:
-                return False
-            self.get_user_status_href()
-            self.login_status = True
-            return True
-        except Exception, e:
+        response = self.urlopen_with_data(self.login_url,urllib.urlencode(data))
+        status = response.getcode()
+        page = response.read()
+        if (status != 200 and status != 302) or page.find('Logout') == -1:
             return False
+        self.get_user_status_href()
+        self.login_status = True
+        return True
 
     def get_user_status_href(self):
         url = 'http://acm.zju.edu.cn/onlinejudge'
@@ -82,6 +79,7 @@ class ZOJSpider(BaseSpider):
         except Exception, e:
             raise Exception('Get Status Error:' + e.message)
 
+    @try_times(3)
     def get_solved_code(self, code_url):
         url = 'http://acm.zju.edu.cn'+code_url
         try:
@@ -120,10 +118,11 @@ class ZOJSpider(BaseSpider):
             raise Exception("ZOJ account not set")
         self.login()
         if not self.login_status:
-            raise Exception("ZOJ account login failed")
+            raise LoginFailedException("ZOJ account login failed")
         count = self.get_problem_count()
         self.account.set_problem_count(count['solved'], count['submitted'])
         self.account.last_update_time = datetime.datetime.now()
         self.account.save()
         self.update_submit(init)
+        self.logout()
 

@@ -10,6 +10,7 @@ import logging
 from logging import FileHandler
 from logging import Formatter
 from dao.dbACCOUNT import Account, AccountStatus
+from spider.BaseSpider import LoginFailedException
 from dao.dbSUBMIT import Submit
 from spider.CFSpider import CFSpider
 from spider.HDUSpider import HDUSpider
@@ -48,7 +49,7 @@ class AccountUpdateServer(Thread):
         try:
             permit_date = datetime.datetime.now() - datetime.timedelta(hours=app.config['SERVER_TIME_DELTTA'])
             query = Account.query.filter(Account.oj_name==self.oj_name)
-            query = query.filter(Account.update_status!=AccountStatus.UPDATING)
+            query = query.filter(Account.update_status!=AccountStatus.UPDATING, Account.update_status!=AccountStatus.ACCOUNT_ERROR)
             query = query.filter(or_(Account.last_update_time<permit_date,Account.update_status!=AccountStatus.NORMAL))
             account = query.order_by(Account.last_update_time.asc()).with_lockmode('update').first()
             if not account:
@@ -84,6 +85,11 @@ class AccountUpdateServer(Thread):
                     try:
                         self.do_spy(account, init)
                         account.update_status = AccountStatus.NORMAL
+                    except LoginFailedException, e:
+                        db.session.rollback()
+                        account.last_update_time = datetime.datetime.now()
+                        account.update_status = AccountStatus.ACCOUNT_ERROR
+                        app.logger.error('['+self.oj_name+'] update account error! :' + e.message)
                     except Exception, e:
                         db.session.rollback()
                         account.last_update_time = datetime.datetime.now()

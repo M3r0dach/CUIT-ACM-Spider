@@ -1,5 +1,5 @@
 from __init__ import *
-from BaseSpider import BaseSpider
+from BaseSpider import BaseSpider, LoginFailedException
 
 class UVASpider(BaseSpider):
 
@@ -58,3 +58,4 @@ class UVASpider(BaseSpider):
         self.account.set_problem_count(count['solved'], count['submitted'])
         self.account.last_update_time = datetime.datetime.now()
         self.account.save()
+        self.logout()

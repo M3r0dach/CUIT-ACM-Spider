@@ -1,5 +1,5 @@
 from __init__ import *
-from BaseSpider import BaseSpider
+from BaseSpider import BaseSpider, LoginFailedException
 from util.ThreadingPool import ThreadPool
 import json
 
@@ -11,17 +11,14 @@ class BNUSpider(BaseSpider):
 
     def login(self):
         data = {'username': self.account.nickname,'password':self.account.password, 'cksave':'1'}
-        try:
-            response = self.urlopen_with_data(self.login_url, urllib.urlencode(data))
-            status = response.getcode()
-            page = response.read()
-            info = json.JSONDecoder().decode(page)
-            if (status != 200 and status != 302 or info['code']!=0):
-                return False
-            self.login_status = True
-            return True
-        except Exception, e:
+        response = self.urlopen_with_data(self.login_url, urllib.urlencode(data))
+        status = response.getcode()
+        page = response.read()
+        info = json.JSONDecoder().decode(page)
+        if (status != 200 and status != 302 or info['code']!=0):
             return False
+        self.login_status = True
+        return True
 
     def get_problem_count(self):
         url = 'http://acm.bnu.edu.cn/v3/userinfo.php?name=' + self.account.nickname
@@ -152,6 +149,7 @@ class BNUSpider(BaseSpider):
         self.account.last_update_time = datetime.datetime.now()
         db.session.commit()
 
+    @try_times(3)
     def get_solved_code(self, run_id):
         url = 'http://acm.bnu.edu.cn/v3/ajax/get_source.php?runid='+run_id
         try:
@@ -166,9 +164,10 @@ class BNUSpider(BaseSpider):
             raise Exception("BNU account not set")
         self.login()
         if not self.login_status:
-            raise Exception("BNU account login failed")
+            raise LoginFailedException("BNU account login failed")
         count = self.get_problem_count()
         self.account.set_problem_count(count['solved'], count['submitted'])
         self.account.last_update_time = datetime.datetime.now()
         self.account.save()
         self.update_submit(init)
+        self.logout()

@@ -1,5 +1,10 @@
 import urllib2, urllib
+from util.functional import try_times
 import cookielib
+
+
+class LoginFailedException(Exception):
+    pass
 
 
 class BaseSpider():
@@ -15,14 +20,16 @@ class BaseSpider():
         self.user_agent = user_agent
 
     def set_account(self, account):
+        self.account = account
+
+    def logout(self):
         self.login_status = False
         self.cookieJar.clear()
-        self.account = account
 
     def login(self):
         pass
 
-
+    @try_times(3)
     def load_page(self, url):
         req = urllib2.Request(url, headers=self.headers)
         page = ''
@@ -37,6 +44,7 @@ class BaseSpider():
         except Exception, e:
             raise Exception('Open the page Failed!:' + e.message)
 
+    @try_times(3)
     def urlopen_with_data(self, url,  post_data):
         req = urllib2.Request(url, post_data, headers=self.headers)
         try:

@@ -1,5 +1,6 @@
 from __init__ import *
-from BaseSpider import BaseSpider
+from BaseSpider import BaseSpider, LoginFailedException
+from util.functional import try_times
 from dao.dbACCOUNT import Account
 from util.ThreadingPool import ThreadPool
 
@@ -12,16 +13,13 @@ class HDUSpider(BaseSpider):
 
     def login(self):
         data = {'username': self.account.nickname, 'userpass': self.account.password, 'login': 'Sign In'}
-        try:
-            response = self.urlopen_with_data(self.login_url, urllib.urlencode(data))
-            status = response.getcode()
-            page = response.read()
-            if (status != 200 and status != 302) or page.find('Sign Out') == -1:
-                return False
-            self.login_status = True
-            return True
-        except Exception, e:
+        response = self.urlopen_with_data(self.login_url, urllib.urlencode(data))
+        status = response.getcode()
+        page = response.read()
+        if (status != 200 and status != 302) or page.find('Sign Out') == -1:
             return False
+        self.login_status = True
+        return True
 
     def fix_problem_id(self, string):
         start = string.find('(') + 1
@@ -83,7 +81,7 @@ class HDUSpider(BaseSpider):
         except Exception, e:
             raise Exception('Get Status Error:' + e.message)
 
-
+    @try_times(3)
     def get_solved_code(self, run_id):
         url = 'http://acm.hdu.edu.cn/viewcode.php?rid='+run_id
         try:
@@ -122,9 +120,10 @@ class HDUSpider(BaseSpider):
             raise Exception("HDU account not set")
         self.login()
         if not self.login_status:
-            raise Exception("HDU account login failed")
+            raise LoginFailedException("HDU account login failed")
         count = self.get_problem_count()
         self.account.set_problem_count(count['solved'], count['submitted'])
         self.account.last_update_time = datetime.datetime.now()
         self.account.save()
         self.update_submit(init)
+        self.logout()
